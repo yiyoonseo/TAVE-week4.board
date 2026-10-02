@@ -1,6 +1,6 @@
-package post.domain;
+package com.tave_week4.board.post.domain;
 
-import global.entity.BaseItemEntity;
+import com.tave_week4.board.global.entity.BaseItemEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,7 +17,7 @@ public class Post extends BaseItemEntity {
     @Column(nullable = false, length = 100)
     private String title;
 
-    @Column(nullable = false)
+    @Lob @Column(nullable = false)
     private String content;
 
     @Column(nullable = false, length = 30)

@@ -1,6 +1,6 @@
-package post.dto;
+package com.tave_week4.board.post.dto;
 
-import post.domain.Post;
+import com.tave_week4.board.post.domain.Post;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;

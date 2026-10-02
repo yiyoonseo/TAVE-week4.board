@@ -1,4 +1,4 @@
-package global.entity;
+package com.tave_week4.board.global.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

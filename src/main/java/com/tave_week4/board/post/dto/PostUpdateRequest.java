@@ -1,9 +1,9 @@
-package post.dto;
+package com.tave_week4.board.post.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record PublicUpdateRequest(
+public record PostUpdateRequest(
         @NotBlank @Size(max = 100)
         String title,
 

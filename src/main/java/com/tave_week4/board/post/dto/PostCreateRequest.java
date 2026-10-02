@@ -1,4 +1,4 @@
-package post.dto;
+package com.tave_week4.board.post.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
