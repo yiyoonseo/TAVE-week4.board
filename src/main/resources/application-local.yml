@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:board;MODE=MySQL
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+  cache:
+    type: caffeine
+    cache-names: post
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  health:
+    redis:
+      enabled: false       # 로컬엔 Redis가 없으니 헬스체크에서 제외
+
+logging:
+  level:
+    org.springframework.cache: trace   # 캐시 히트 여부가 로그에 찍힘

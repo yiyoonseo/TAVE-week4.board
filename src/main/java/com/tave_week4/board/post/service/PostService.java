@@ -28,7 +28,7 @@ public class PostService {
     }
 
     // 단건 조회
-    @Cacheable(cacheNames = "com/tave_week4/board/post", key = "#id")
+    @Cacheable(cacheNames = "post", key = "#id")
     public PostResponse getPost(Long id) {
         return PostResponse.from(findPost(id));
     }
@@ -40,13 +40,13 @@ public class PostService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "com/tave_week4/board/post", key = "#id")
+    @CacheEvict(cacheNames = "post", key = "#id")
     public void update(Long id, PostUpdateRequest req) {
         findPost(id).update(req.title(), req.content());
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "com/tave_week4/board/post", key = "#id")
+    @CacheEvict(cacheNames = "post", key = "#id")
     public void delete(Long id) {
         postRepository.delete(findPost(id));
     }

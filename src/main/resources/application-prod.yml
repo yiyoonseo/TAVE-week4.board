@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update     # 실무에선 validate + Flyway 같은 마이그레이션 도구 사용
+    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m
+
+management:
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true      # /actuator/health/liveness, /readiness 활성화
