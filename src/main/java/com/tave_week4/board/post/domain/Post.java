@@ -23,13 +23,13 @@ public class Post extends BaseTimeEntity {
     @Column(nullable = false, length = 30)
     private String author;
 
-    public Post(String author, String content, String title) {
+    public Post(String title, String content, String author) {
         this.author = author;
         this.content = content;
         this.title = title;
     }
 
-    public void update(String content, String title) {
+    public void update(String title, String content) {
         this.content = content;
         this.title = title;
     }
