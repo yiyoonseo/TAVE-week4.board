@@ -9,6 +9,7 @@ services:
         DB_USERNAME: ${DB_USERNAME}
         DB_PASSWORD: ${DB_PASSWORD}
         REDIS_HOST: redis          # 서비스 이름이 곧 호스트 이름
+        SPRING_CACHE_TYPE: ${CACHE_TYPE:-redis}
       depends_on:
         mysql:
           condition: service_healthy   # MySQL이 완전히 뜬 뒤에 app 시작
