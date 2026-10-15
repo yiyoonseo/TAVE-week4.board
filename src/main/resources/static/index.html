@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TAVE 게시판</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #fff; --text: #1f2328; --muted: #6b7280;
+      --line: #e5e7eb; --accent: #2563eb; --accent-text: #fff;
+      --danger: #dc2626; --ok: #16a34a; --warn: #d97706;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1115; --card: #181b21; --text: #e6e8eb; --muted: #9aa1ab;
+        --line: #2a2f37; --accent: #3b82f6; --accent-text: #fff;
+        --danger: #f87171; --ok: #4ade80; --warn: #fbbf24;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; line-height: 1.5;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 16px; max-width: 1100px; margin: 0 auto;
+    }
+    header h1 { font-size: 20px; margin: 0; }
+    .badge { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+    .badge.up { color: var(--ok); border-color: var(--ok); }
+    .badge.down { color: var(--danger); border-color: var(--danger); }
+    main {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      padding: 0 16px 32px; max-width: 1100px; margin: 0 auto;
+    }
+    @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-head h2 { font-size: 16px; margin: 0; }
+    button {
+      font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--line); background: var(--card); color: var(--text);
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    button.danger { color: var(--danger); border-color: var(--danger); }
+    button:disabled { opacity: .5; cursor: default; }
+    ul.posts { list-style: none; margin: 0; padding: 0; }
+    ul.posts li {
+      padding: 10px 8px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px;
+    }
+    ul.posts li:hover, ul.posts li.active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .post-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .pager { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 12px; }
+    .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+    input, textarea {
+      width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    }
+    textarea { min-height: 160px; resize: vertical; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+    .detail-title { font-size: 20px; margin: 0 0 4px; word-break: break-word; }
+    .detail-content { white-space: pre-wrap; word-break: break-word; margin: 16px 0; }
+    .timing { margin-top: 16px; padding: 12px; border-radius: 8px; background: var(--bg); font-size: 13px; }
+    .timing ol { margin: 6px 0 0; padding-left: 20px; }
+    .timing .hint { color: var(--muted); margin-top: 6px; }
+    .msg { margin-top: 10px; font-size: 14px; color: var(--danger); min-height: 1em; }
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px;
+      font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>📋 TAVE 게시판</h1>
+  <span id="health" class="badge">서버 상태 확인 중…</span>
+</header>
+
+<main>
+  <!-- 목록 -->
+  <section class="card">
+    <div class="card-head">
+      <h2>게시글 목록</h2>
+      <button class="primary" id="btn-new">글쓰기</button>
+    </div>
+    <ul class="posts" id="post-list"></ul>
+    <div class="pager">
+      <button id="btn-prev">이전</button>
+      <span class="meta" id="page-info"></span>
+      <button id="btn-next">다음</button>
+    </div>
+  </section>
+
+  <!-- 상세 / 작성 / 수정 -->
+  <section class="card" id="panel">
+    <div class="empty">왼쪽에서 글을 선택하거나 글쓰기를 눌러 주세요.</div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const API = '/api/posts';
+  const PAGE_SIZE = 10;
+  let page = 0;
+  let selectedId = null;
+  let timings = []; // 같은 글 반복 조회 시 응답시간 기록 (캐시 효과 확인용)
+
+  const $ = (sel) => document.querySelector(sel);
+  const panel = $('#panel');
+
+  // ── 공통 유틸 ──
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function formatDate(s) {
+    return s ? s.replace('T', ' ').slice(0, 16) : '';
+  }
+
+  function toast(text) {
+    const el = $('#toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  async function request(method, url, body) {
+    const res = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `요청 실패 (${res.status})`);
+    }
+    return res;
+  }
+
+  // ── 헬스체크 ──
+  async function checkHealth() {
+    const badge = $('#health');
+    try {
+      const data = await (await fetch('/actuator/health')).json();
+      const up = data.status === 'UP';
+      badge.textContent = `서버 ${data.status}`;
+      badge.className = 'badge ' + (up ? 'up' : 'down');
+    } catch {
+      badge.textContent = '서버 연결 실패';
+      badge.className = 'badge down';
+    }
+  }
+
+  // ── 목록 ──
+  async function loadList() {
+    const res = await request('GET', `${API}?page=${page}&size=${PAGE_SIZE}`);
+    const data = await res.json();
+    // Spring Data 버전에 따라 페이지 정보 위치가 다를 수 있어 둘 다 대응
+    const totalPages = data.page?.totalPages ?? data.totalPages ?? 1;
+    const posts = data.content ?? [];
+
+    const list = $('#post-list');
+    if (posts.length === 0) {
+      list.innerHTML = '<li class="empty" style="cursor:default">아직 글이 없어요. 첫 글을 써 보세요!</li>';
+    } else {
+      list.innerHTML = posts.map((p) => `
+        <li data-id="${p.id}" class="${p.id === selectedId ? 'active' : ''}">
+          <div class="post-title">${escapeHtml(p.title)}</div>
+          <div class="meta">#${p.id} · ${escapeHtml(p.author)} · ${formatDate(p.createdAt)}</div>
+        </li>`).join('');
+    }
+
+    $('#page-info').textContent = `${page + 1} / ${Math.max(totalPages, 1)}`;
+    $('#btn-prev').disabled = page === 0;
+    $('#btn-next').disabled = page + 1 >= totalPages;
+  }
+
+  // ── 상세 ──
+  async function showDetail(id) {
+    if (id !== selectedId) timings = [];
+    selectedId = id;
+
+    const start = performance.now();
+    let post;
+    try {
+      post = await (await request('GET', `${API}/${id}`)).json();
+    } catch (e) {
+      panel.innerHTML = `<div class="msg">${escapeHtml(e.message)}</div>`;
+      return;
+    }
+    timings.push(Math.round(performance.now() - start));
+
+    panel.innerHTML = `
+      <div class="card-head"><h2>게시글 상세</h2></div>
+      <h3 class="detail-title">${escapeHtml(post.title)}</h3>
+      <div class="meta">#${post.id} · ${escapeHtml(post.author)} · 작성 ${formatDate(post.createdAt)}
+        ${post.updatedAt && post.updatedAt !== post.createdAt ? ' · 수정 ' + formatDate(post.updatedAt) : ''}</div>
+      <div class="detail-content">${escapeHtml(post.content)}</div>
+      <div class="actions">
+        <button id="btn-reload">다시 조회</button>
+        <button id="btn-edit">수정</button>
+        <button class="danger" id="btn-delete">삭제</button>
+      </div>
+      <div class="timing">
+        <strong>⏱ 응답시간 (GET /api/posts/${post.id})</strong>
+        <ol>${timings.map((t) => `<li>${t} ms</li>`).join('')}</ol>
+        <div class="hint">'다시 조회'를 여러 번 눌러 보세요. 캐시가 켜져 있으면 두 번째부터 더 빨라져요.</div>
+      </div>`;
+
+    $('#btn-reload').onclick = () => showDetail(post.id);
+    $('#btn-edit').onclick = () => showForm(post);
+    $('#btn-delete').onclick = () => deletePost(post.id);
+    loadList();
+  }
+
+  // ── 작성 / 수정 폼 ──
+  function showForm(post) {
+    const editing = !!post;
+    panel.innerHTML = `
+      <div class="card-head"><h2>${editing ? '글 수정' : '새 글 쓰기'}</h2></div>
+      <form id="post-form">
+        <label for="f-title">제목</label>
+        <input id="f-title" maxlength="100" required value="${escapeHtml(post?.title)}">
+        ${editing ? '' : `
+        <label for="f-author">작성자</label>
+        <input id="f-author" maxlength="30" required>`}
+        <label for="f-content">내용</label>
+        <textarea id="f-content" required>${escapeHtml(post?.content)}</textarea>
+        <div class="msg" id="form-msg"></div>
+        <div class="actions">
+          <button type="button" id="btn-cancel">취소</button>
+          <button type="submit" class="primary">${editing ? '수정 완료' : '등록'}</button>
+        </div>
+      </form>`;
+
+    $('#btn-cancel').onclick = () => editing ? showDetail(post.id) : resetPanel();
+    $('#post-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const body = { title: $('#f-title').value, content: $('#f-content').value };
+      try {
+        if (editing) {
+          await request('PUT', `${API}/${post.id}`, body);
+          toast('수정했어요');
+          showDetail(post.id);
+        } else {
+          body.author = $('#f-author').value;
+          const res = await request('POST', API, body);
+          const newId = Number(res.headers.get('Location').split('/').pop());
+          toast('등록했어요');
+          page = 0;
+          showDetail(newId);
+        }
+      } catch (err) {
+        $('#form-msg').textContent = err.message;
+      }
+    };
+  }
+
+  async function deletePost(id) {
+    if (!confirm(`#${id} 글을 삭제할까요?`)) return;
+    try {
+      await request('DELETE', `${API}/${id}`);
+      toast('삭제했어요');
+      resetPanel();
+      loadList();
+    } catch (e) {
+      toast(e.message);
+    }
+  }
+
+  function resetPanel() {
+    selectedId = null;
+    timings = [];
+    panel.innerHTML = '<div class="empty">왼쪽에서 글을 선택하거나 글쓰기를 눌러 주세요.</div>';
+    loadList();
+  }
+
+  // ── 이벤트 연결 ──
+  $('#post-list').onclick = (e) => {
+    const li = e.target.closest('li[data-id]');
+    if (li) showDetail(Number(li.dataset.id));
+  };
+  $('#btn-new').onclick = () => { selectedId = null; showForm(); loadList(); };
+  $('#btn-prev').onclick = () => { page--; loadList(); };
+  $('#btn-next').onclick = () => { page++; loadList(); };
+
+  checkHealth();
+  loadList().catch((e) => {
+    $('#post-list').innerHTML = `<li class="empty">${escapeHtml(e.message)}</li>`;
+  });
+</script>
+</body>
+</html>

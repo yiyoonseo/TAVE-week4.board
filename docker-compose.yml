@@ -1,0 +1,32 @@
+services:
+    app:
+      build: .
+      ports:
+        - "8080:8080"
+      environment:
+        SPRING_PROFILES_ACTIVE: prod
+        DB_URL: jdbc:mysql://mysql:3306/board
+        DB_USERNAME: ${DB_USERNAME}
+        DB_PASSWORD: ${DB_PASSWORD}
+        REDIS_HOST: redis          # 서비스 이름이 곧 호스트 이름
+        SPRING_CACHE_TYPE: ${CACHE_TYPE:-redis}
+      depends_on:
+        mysql:
+          condition: service_healthy   # MySQL이 완전히 뜬 뒤에 app 시작
+        redis:
+          condition: service_started
+
+    mysql:
+      image: mysql:8.4
+      environment:
+        MYSQL_DATABASE: board
+        MYSQL_USER: ${DB_USERNAME}
+        MYSQL_PASSWORD: ${DB_PASSWORD}
+        MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      healthcheck:
+        test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+        interval: 5s
+        retries: 10
+
+    redis:
+      image: redis:7
